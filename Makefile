@@ -1,4 +1,4 @@
-all: hex2dec dec2hex lower
+all: hex2dec dec2hex lower upper
 
 
 %.o: %.c %.h
@@ -17,23 +17,14 @@ lower: lower.c input.o
 	$(CC) -o lower $^
 
 
+upper: upper.c input.o
+	$(CC) -o upper $^
+
+
 .PHONY: clean
 clean:
 	-rm *.o
 	-rm hex2dec
 	-rm dec2hex
 	-rm lower
-
-
-.PHONY: install
-install:
-	cp hex2dec $(ROOTFS)/usr/bin
-	cp dec2hex $(ROOTFS)/usr/bin
-	cp lower $(ROOTFS)/usr/bin
-
-
-.PHONY: uninstall
-uninstall:
-	-rm $(ROOTFS)/usr/bin/hex2dec
-	-rm $(ROOTFS)/usr/bin/dec2hex
-	-rm $(ROOTFS)/usr/bin/lower
+	-rm upper

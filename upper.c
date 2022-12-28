@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
     
     int i;
     for (i = 0; i < c; i++) {
-        inp[i] = tolower(inp[i]);
+        inp[i] = toupper(inp[i]);
     }
     write(STDOUT_FILENO, inp, c);
     return 0;

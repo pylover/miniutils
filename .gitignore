@@ -1,0 +1,9 @@
+*.o
+
+# Vim
+.*.sw[op]
+
+# Project specific
+hex2dec
+dec2hex
+lower

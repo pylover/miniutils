@@ -3,6 +3,7 @@
 #include <openssl/hmac.h>
 #include <openssl/buffer.h>
 #include <argp.h>
+#include <clog.h>
 
 
 #define HMAC_LEN 32
@@ -15,8 +16,8 @@ struct arguments {
 };
 
 
-static
-error_t parse_opt(int key, char *arg, struct argp_state *state) {
+static error_t
+parse_opt(int key, char *arg, struct argp_state *state) {
     struct arguments *arguments = state->input;
 
     switch (key) {
@@ -267,6 +268,7 @@ main(int argc, char **argv) {
         return jwt_verify(arguments.args[1], secret);
     }
     else {
+        ERROR("Invalid command: %s", arguments.args[0]);
         return -1;
     }
 }

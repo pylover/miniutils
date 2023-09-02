@@ -1,20 +1,55 @@
 #include <string.h>
+
 #include <openssl/hmac.h>
 #include <openssl/buffer.h>
+#include <argp.h>
 
 
-#define BEARER_TOKEN_SIZE 128 
 #define HMAC_LEN 32
 #define HMAC_ENCODEDLEN (((HMAC_LEN + 2) / 3) * 4)
+#define BASE64URL_ENCODEDLEN(str_len) ((((str_len) + 2) / 3) * 4)
 
 
-static const char base64url_alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghi"
-        "jklmnopqrstuvwxyz0123456789-_";
+struct arguments {
+    char *args[2];
+};
+
+
+static
+error_t parse_opt(int key, char *arg, struct argp_state *state) {
+    struct arguments *arguments = state->input;
+
+    switch (key) {
+        case ARGP_KEY_ARG:
+            if (state->arg_num >= 2) {
+                argp_usage(state);
+            }
+            arguments->args[state->arg_num] = arg;
+
+            break;
+        case ARGP_KEY_END:
+            if (state->arg_num < 2) {
+                argp_usage(state);
+            }
+
+            break;
+        default:
+            return ARGP_ERR_UNKNOWN;
+    }
+    return 0;
+}
+
+
+static char doc[] = "Miniutils JWT tool.";
+static char args_doc[] = "generate|verify <PAYLOAD>/<JWT> \n";
+static struct argp_option options[] = {
+    {0}
+};
+static struct argp argp = {options, parse_opt, args_doc, doc};
 
 
 int
-base64url_encode(const unsigned char *input, size_t input_length,
-        char *output) {
+base64url_encode(char *input, size_t input_length, char *output) {
     /* Create a BIO object for Base64 encoding */
     BIO *bio = BIO_new(BIO_f_base64());
     if (bio == NULL) {
@@ -66,7 +101,7 @@ base64url_encode(const unsigned char *input, size_t input_length,
 
 
 int
-base64url_decode(char *input, size_t input_length, unsigned char *output) {
+base64url_decode(char *input, size_t input_length, char *output) {
     /* Convert the Base64URL alphabet to the standard Base64 alphabet */
     size_t i;
     for (i = 0; i < input_length; i++) {
@@ -111,42 +146,43 @@ base64url_decode(char *input, size_t input_length, unsigned char *output) {
 
 
 void
-calculate_hmac_sha256(const unsigned char *data, int data_len,
-        const unsigned char *key, int key_len, unsigned char *result) {
-    unsigned int len = HMAC_LEN;
+calculate_hmac_sha256(char *data, int data_len, char *key, int key_len,
+        char *result) {
+    int len = HMAC_LEN;
     HMAC(EVP_sha256(), key, key_len, data, data_len, result, &len);
 }
 
 
 int
-jwt_generate(const char *payload, const char *secret, char *token) {
+jwt_generate(char *payload, char *secret) {
     /* Fixed header is only supported in this version */
-    const char *header = "{\"alg\":\"HS256\",\"typ\":\"JWT\"}";
-    size_t header_length = strlen(header);
-    char encoded_header[BEARER_TOKEN_SIZE];
-    base64url_encode((const unsigned char *)header, header_length,
-                     encoded_header);
+    char *header = "{\"alg\":\"HS256\",\"typ\":\"JWT\"}";
+    size_t headerlen;
+    size_t payloadlen;
 
-    size_t payload_length = strlen(payload);
-    char encoded_payload[BEARER_TOKEN_SIZE];
-    base64url_encode((const unsigned char *)payload, payload_length,
-                     encoded_payload);
+    headerlen = strlen(header);
+    payloadlen = strlen(payload);
+
+    char encoded_header[BASE64URL_ENCODEDLEN(headerlen)];
+    base64url_encode(header, headerlen, encoded_header);
+
+    char encoded_payload[BASE64URL_ENCODEDLEN(payloadlen)];
+    base64url_encode(payload, payloadlen, encoded_payload);
 
     /* Concatenate header and payload with a period ('.') separator */
-    char data[BEARER_TOKEN_SIZE * 2 + 2];
-    sprintf(data, "%s.%s", encoded_header, encoded_payload);
+    char data[strlen(encoded_header) + strlen(encoded_payload) + 1];
+    strcpy(data, encoded_header);
+    strcat(data, ".");
+    strcat(data, encoded_payload);
 
-    unsigned char hmac[HMAC_LEN];
-    unsigned int hmac_length;
-    HMAC(EVP_sha256(), secret, strlen(secret), (const unsigned char *)data,
-         strlen(data), hmac, &hmac_length);
+    char hmac[HMAC_LEN];
+    calculate_hmac_sha256(data, strlen(data), secret, strlen(secret), hmac);
 
-    char encoded_signature[BEARER_TOKEN_SIZE];
-    base64url_encode(hmac, hmac_length, encoded_signature);
 
-    sprintf(token, "%s.%s.%s", encoded_header, encoded_payload,
-            encoded_signature);
+    char encoded_signature[BASE64URL_ENCODEDLEN(HMAC_LEN)];
+    base64url_encode(hmac, HMAC_LEN, encoded_signature);
 
+    printf("%s.%s.%s\n", encoded_header, encoded_payload, encoded_signature);
     return 0;
 }
 
@@ -174,23 +210,41 @@ jwt_verify(char *token, char *secret) {
         part = strtok_r(NULL, ".", &saveptr);
     }
 
+    if (i != 2) {
+        printf("Invalid JWT Token\n");
+        return -1;
+    }
+
     /* Concatenate header and payload with a period separator */
-    char msg[BEARER_TOKEN_SIZE];
+    char msg[strlen(header) + strlen(payload) + 1];
     strcpy(msg, header);
     strcat(msg, ".");
     strcat(msg, payload);
 
     /* Calculate the HMAC SHA256 */
     unsigned char hmac[HMAC_LEN];
-    calculate_hmac_sha256((unsigned char*)msg, strlen(msg),
-            (unsigned char*)secret, strlen(secret), hmac);
+    calculate_hmac_sha256(msg, strlen(msg), secret, strlen(secret), hmac);
 
     /* Base64url encode the HMAC */
     char encoded_hmac[HMAC_ENCODEDLEN];
     base64url_encode(hmac, sizeof(hmac), encoded_hmac);
 
     /* Compare the provided signature with the calculated one */
-    if (strcmp(signature, encoded_hmac) != 0) {
+    if (strcmp(signature, encoded_hmac) == 0) {
+        printf("OK\n");
+        return -1;
+    }
+
+    printf("NOK\n");
+    return 0;
+}
+
+
+int
+get_secret(char **secret) {
+    *secret = getenv("JWT_SECRET");
+
+    if (*secret == NULL) {
         return -1;
     }
 
@@ -199,24 +253,20 @@ jwt_verify(char *token, char *secret) {
 
 
 int
-main() {
-    char payload[] = "{\"user\":\"admin\",\"iat\":1422779638}";
-    char jwt[BEARER_TOKEN_SIZE];
-    char secret[] = "7{yX5OB_zh?Hv]|5PO`H:Jn?Z=LNaB^_";
+main(int argc, char **argv) {
+    struct arguments arguments;
+    argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
-    if (jwt_generate(payload, secret, jwt) != 0) {
-        printf("JWT generation failed.\n");
+    char *secret;
+    get_secret(&secret);
+
+    if (strcmp(arguments.args[0], "generate") == 0) {
+        return jwt_generate(arguments.args[1], secret);
+    }
+    else if (strcmp(arguments.args[0], "verify") == 0) {
+        return jwt_verify(arguments.args[1], secret);
+    }
+    else {
         return -1;
     }
-
-    printf("Generated JWT: %s\n", jwt);
-
-    if (jwt_verify(jwt, "7{yX5OB_zh?Hv]|5PO`H:Jn?Z=LNaB^_") != 0) {
-        printf("JWT verification failed.\n");
-        return -1;
-    }
-
-    printf("JWT verification succeeded.\n");
-    return 0;
 }
-

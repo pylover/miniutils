@@ -2,51 +2,13 @@
 
 #include <openssl/hmac.h>
 #include <openssl/buffer.h>
-#include <argp.h>
 #include <clog.h>
+#include <cutest.h>
 
 
 #define HMAC_LEN 32
 #define HMAC_ENCODEDLEN (((HMAC_LEN + 2) / 3) * 4)
 #define BASE64URL_ENCODEDLEN(str_len) ((((str_len) + 2) / 3) * 4)
-
-
-struct arguments {
-    char *args[2];
-};
-
-
-static error_t
-parse_opt(int key, char *arg, struct argp_state *state) {
-    struct arguments *arguments = state->input;
-
-    switch (key) {
-        case ARGP_KEY_ARG:
-            if (state->arg_num >= 2) {
-                argp_usage(state);
-            }
-            arguments->args[state->arg_num] = arg;
-
-            break;
-        case ARGP_KEY_END:
-            if (state->arg_num < 2) {
-                argp_usage(state);
-            }
-
-            break;
-        default:
-            return ARGP_ERR_UNKNOWN;
-    }
-    return 0;
-}
-
-
-static char doc[] = "Miniutils JWT tool.";
-static char args_doc[] = "generate|verify <PAYLOAD>/<JWT> \n";
-static struct argp_option options[] = {
-    {0}
-};
-static struct argp argp = {options, parse_opt, args_doc, doc};
 
 
 int
@@ -242,34 +204,37 @@ jwt_verify(char *token, char *secret) {
 }
 
 
-int
-get_secret(char **secret) {
-    *secret = getenv("JWT_SECRET");
+void
+test_base64url() {
+    char input[] = "foo, bar!";
+    char encoded[256];
+    char decoded[256];
 
-    if (*secret == NULL) {
-        return -1;
-    }
+    eqint(0, base64url_encode(input, strlen(input), encoded));
+    eqint(0, base64url_decode(encoded, strlen(encoded), decoded));
+    eqstr(input, decoded);
+}
 
-    return 0;
+
+void
+test_jwt() {
+    char payload[] = "{\"foo\": \"bar\", \"baz\": 13}";
+    char secret[] = "Isawasawthatsawasaw";
+    eqint(0, jwt_generate(payload, secret));
+
+    char token[] = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmb28iOiAiYmFyIiwgImJheiI6IDEzfQ.jue0Jt3beCWBmjG5n0a9T7Pmt_jk2m7CpIUt-t1wECk";
+    eqint(0, jwt_verify(token, secret));
+    
+    char invalidtoken[] = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmb28iOiAiY"
+        "mFyIiwgImJheiI6IDEzfQ.jue0Jt3beCWBmjG5n0a9T7Pmt_jk2m7CpIUt-t1wECK";
+    eqint(-1, jwt_verify(invalidtoken, secret));
 }
 
 
 int
-main(int argc, char **argv) {
-    struct arguments arguments;
-    argp_parse(&argp, argc, argv, 0, 0, &arguments);
+main() {
+    test_base64url();
+    test_jwt();
 
-    char *secret;
-    get_secret(&secret);
-
-    if (strcmp(arguments.args[0], "generate") == 0) {
-        return jwt_generate(arguments.args[1], secret);
-    }
-    else if (strcmp(arguments.args[0], "verify") == 0) {
-        return jwt_verify(arguments.args[1], secret);
-    }
-    else {
-        ERROR("Invalid command: %s", arguments.args[0]);
-        return -1;
-    }
+    return EXIT_SUCCESS;
 }

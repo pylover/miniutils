@@ -172,7 +172,7 @@ jwt_verify(char *token, char *secret) {
         }
         part = strtok_r(NULL, ".", &saveptr);
     }
-    
+
     INFO("%d", i);
     if (i != 3) {
         printf("Invalid JWT Token\n");
@@ -222,9 +222,10 @@ test_jwt() {
     char secret[] = "Isawasawthatsawasaw";
     eqint(0, jwt_generate(payload, secret));
 
-    char token[] = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmb28iOiAiYmFyIiwgImJheiI6IDEzfQ.jue0Jt3beCWBmjG5n0a9T7Pmt_jk2m7CpIUt-t1wECk";
+    char token[] = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmb28iOiAiYmFyIiwg"
+            "ImJheiI6IDEzfQ.jue0Jt3beCWBmjG5n0a9T7Pmt_jk2m7CpIUt-t1wECk";
     eqint(0, jwt_verify(token, secret));
-    
+
     char invalidtoken[] = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmb28iOiAiY"
         "mFyIiwgImJheiI6IDEzfQ.jue0Jt3beCWBmjG5n0a9T7Pmt_jk2m7CpIUt-t1wECK";
     eqint(-1, jwt_verify(invalidtoken, secret));

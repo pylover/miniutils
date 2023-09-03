@@ -21,6 +21,10 @@ upper: upper.c input.o
 	$(CC) -o upper $^
 
 
+jwt: jwt.c input.o
+	$(CC) -o $@ $^
+
+
 .PHONY: clean
 clean:
 	-rm *.o

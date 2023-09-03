@@ -1,4 +1,4 @@
-all: hex2dec dec2hex lower upper
+all: hex2dec dec2hex lower upper jwt
 
 
 %.o: %.c %.h
@@ -32,3 +32,4 @@ clean:
 	-rm dec2hex
 	-rm lower
 	-rm upper
+	-rm jwt

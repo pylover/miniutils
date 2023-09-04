@@ -247,6 +247,7 @@ get_secret(char **secret) {
     *secret = getenv("JWT_SECRET");
 
     if (*secret == NULL) {
+        ERROR("JWT_SECRET is not set in env.");
         return -1;
     }
 
@@ -260,7 +261,9 @@ main(int argc, char **argv) {
     argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
     char *secret;
-    get_secret(&secret);
+    if (get_secret(&secret) != 0) {
+        return -1;
+    }
 
     if (strcmp(arguments.args[0], "generate") == 0) {
         return jwt_generate(arguments.args[1], secret);

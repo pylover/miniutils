@@ -1,6 +1,10 @@
 all: hex2dec dec2hex lower upper jwt
 
 
+LDFLAGS += \
+		 -lcrypto \
+		 -lclog
+
 %.o: %.c %.h
 	$(CC) -c -o $@ $<
 
@@ -22,7 +26,7 @@ upper: upper.c input.o
 
 
 jwt: jwt.c input.o
-	$(CC) -o $@ $^
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
 
 .PHONY: clean

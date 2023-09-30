@@ -211,7 +211,6 @@ jwt_verify(char *token, char *secret) {
         part = strtok_r(NULL, ".", &saveptr);
     }
     
-    INFO("%d", i);
     if (i != 3) {
         printf("Invalid JWT Token\n");
         return -1;

@@ -1,32 +1,35 @@
 all: hex2dec dec2hex lower upper jwt
 
 
+CFLAGS += \
+	-Wall \
+	-Werror
 LDFLAGS += \
-		 -lcrypto \
-		 -lclog
+	-lcrypto \
+	-lclog
 
 %.o: %.c %.h
-	$(CC) -c -o $@ $<
+	$(CC) -c $(CFLAGS) -o $@ $<
 
 
 hex2dec: hex2dec.c input.o
-	$(CC) -o hex2dec $^
+	$(CC) $(CFLAGS) -o hex2dec $^
 
 
 dec2hex: dec2hex.c input.o
-	$(CC) -o dec2hex $^
+	$(CC) $(CFLAGS) -o dec2hex $^
 
 
 lower: lower.c input.o
-	$(CC) -o lower $^
+	$(CC) $(CFLAGS) -o lower $^
 
 
 upper: upper.c input.o
-	$(CC) -o upper $^
+	$(CC) $(CFLAGS) -o upper $^
 
 
 jwt: jwt.c input.o
-	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
 
 .PHONY: clean

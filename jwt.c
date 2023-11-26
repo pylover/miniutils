@@ -147,9 +147,9 @@ base64url_decode(char *input, size_t input_length, char *output) {
 
 
 void
-calculate_hmac_sha256(char *data, int data_len, char *key, int key_len,
-        char *result) {
-    int len = HMAC_LEN;
+calculate_hmac_sha256(const unsigned char *data, int data_len,
+        const char *key, int key_len, unsigned char *result) {
+    unsigned int len = HMAC_LEN;
     HMAC(EVP_sha256(), key, key_len, data, data_len, result, &len);
 }
 
@@ -177,8 +177,8 @@ jwt_generate(char *payload, char *secret) {
     strcat(data, encoded_payload);
 
     char hmac[HMAC_LEN];
-    calculate_hmac_sha256(data, strlen(data), secret, strlen(secret), hmac);
-
+    calculate_hmac_sha256((unsigned char *)data, strlen(data), secret,
+            strlen(secret), (unsigned char *)hmac);
 
     char encoded_signature[BASE64URL_ENCODEDLEN(HMAC_LEN)];
     base64url_encode(hmac, HMAC_LEN, encoded_signature);
@@ -210,7 +210,7 @@ jwt_verify(char *token, char *secret) {
         }
         part = strtok_r(NULL, ".", &saveptr);
     }
-    
+
     if (i != 3) {
         printf("Invalid JWT Token\n");
         return -1;
@@ -223,8 +223,9 @@ jwt_verify(char *token, char *secret) {
     strcat(msg, payload);
 
     /* Calculate the HMAC SHA256 */
-    unsigned char hmac[HMAC_LEN];
-    calculate_hmac_sha256(msg, strlen(msg), secret, strlen(secret), hmac);
+    char hmac[HMAC_LEN];
+    calculate_hmac_sha256((unsigned char *)msg, strlen(msg), secret,
+            strlen(secret), (unsigned char *)hmac);
 
     /* Base64url encode the HMAC */
     char encoded_hmac[HMAC_ENCODEDLEN];
